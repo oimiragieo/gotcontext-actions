@@ -1,0 +1,12 @@
+gotcontext-actions
+==================
+
+This project is derived from nektos/act (https://github.com/nektos/act),
+originally licensed under the MIT License. Copyright (c) 2019 and contributors
+to nektos/act.
+
+Substantial portions of this codebase originate from that project. Modifications
+for gotcontext-actions (local CI/CD parity, enterprise layout, and diagnostics)
+are Copyright (c) 2026 gotcontext-actions contributors.
+
+See LICENSE for the full MIT license text that applies to this distribution.
