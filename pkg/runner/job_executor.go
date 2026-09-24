@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/nektos/act/pkg/common"
@@ -129,7 +131,7 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 	pipeline = append(pipeline, preSteps...)
 	pipeline = append(pipeline, steps...)
 
-	return common.NewPipelineExecutor(
+	jobPipeline := common.NewPipelineExecutor(
 		common.NewFieldExecutor("step", "Set up job", common.NewFieldExecutor("stepid", []string{"--setup-job"},
 			common.NewPipelineExecutor(common.NewInfoExecutor("\u2B50 Run Set up job"), info.startContainer(), rc.InitializeNodeTool()).
 				Then(common.NewFieldExecutor("stepResult", model.StepStatusSuccess, common.NewInfoExecutor("  \u2705  Success - Set up job"))).
@@ -152,6 +154,79 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 						info.interpolateOutputs().Finally(info.closeContainer()).Then(common.NewFieldExecutor("stepResult", model.StepStatusSuccess, common.NewInfoExecutor("  \u2705  Success - Complete job"))).
 							OnError(common.NewFieldExecutor("stepResult", model.StepStatusFailure, common.NewInfoExecutor("  \u274C  Failure - Complete job"))),
 					))))).Finally(setJobResultExecutor)
+
+	return func(ctx context.Context) error {
+		ctx, cancel := evaluateJobTimeout(ctx, rc)
+		defer cancel()
+
+		if rc.Run != nil && rc.Run.Workflow != nil {
+			wf := rc.Run.Workflow
+			if wf.RunName != "" {
+				eval := rc.NewExpressionEvaluator(ctx)
+				common.Logger(ctx).Infof("Run name: %s", eval.Interpolate(ctx, wf.RunName))
+			}
+			if summary := model.PermissionsSummary(wf.Permissions); summary != "" {
+				common.Logger(ctx).Infof("Workflow permissions (advisory): %s", summary)
+			}
+		}
+		if rc.Run != nil && rc.Run.Job() != nil {
+			job := rc.Run.Job()
+			if summary := model.PermissionsSummary(job.Permissions); summary != "" {
+				common.Logger(ctx).Infof("Job permissions (advisory): %s", summary)
+			}
+			conc := job.Concurrency
+			if conc == nil && rc.Run.Workflow != nil {
+				conc = rc.Run.Workflow.Concurrency
+			}
+			if conc != nil && conc.Group != "" {
+				if cc := common.GetConcurrencyController(ctx); cc != nil {
+					eval := rc.NewExpressionEvaluator(ctx)
+					var release context.CancelFunc
+					ctx, release = cc.Acquire(ctx, eval.Interpolate(ctx, conc.Group), conc.CancelInProgress)
+					defer release()
+				}
+			}
+		}
+
+		err := jobPipeline(ctx)
+		printStepSummaries(ctx, rc)
+		return err
+	}
+}
+
+func evaluateJobTimeout(ctx context.Context, rc *RunContext) (context.Context, context.CancelFunc) {
+	noop := func() {}
+	if rc == nil || rc.Run == nil {
+		return ctx, noop
+	}
+	job := rc.Run.Job()
+	if job == nil || job.TimeoutMinutes == "" {
+		return ctx, noop
+	}
+	eval := rc.NewExpressionEvaluator(ctx)
+	timeout := eval.Interpolate(ctx, job.TimeoutMinutes)
+	if timeout == "" {
+		return ctx, noop
+	}
+	minutes, err := strconv.ParseInt(timeout, 10, 64)
+	if err != nil || minutes <= 0 {
+		return ctx, noop
+	}
+	return context.WithTimeout(ctx, time.Duration(minutes)*time.Minute)
+}
+
+func printStepSummaries(ctx context.Context, rc *RunContext) {
+	if rc == nil || len(rc.stepSummaries) == 0 {
+		return
+	}
+	logger := common.Logger(ctx)
+	logger.Infof("---- Step summaries ----")
+	for stepID, body := range rc.stepSummaries {
+		if strings.TrimSpace(body) == "" {
+			continue
+		}
+		logger.Infof("[%s]\n%s", stepID, body)
+	}
 }
 
 func setJobResult(ctx context.Context, info jobInfo, rc *RunContext, success bool) {
@@ -166,6 +241,14 @@ func setJobResult(ctx context.Context, info jobInfo, rc *RunContext, success boo
 
 	if !success {
 		jobResult = "failure"
+		if rc.Run != nil && rc.Run.Job() != nil {
+			eval := rc.NewExpressionEvaluator(ctx)
+			coe := eval.Interpolate(ctx, rc.Run.Job().ContinueOnError)
+			if strings.EqualFold(coe, "true") {
+				jobResult = "success"
+				logger.Infof("Job '%s' failed but continue-on-error is set; treating as success", rc.JobName)
+			}
+		}
 	}
 
 	info.result(jobResult)
@@ -178,7 +261,6 @@ func setJobResult(ctx context.Context, info jobInfo, rc *RunContext, success boo
 	if jobResult != "success" {
 		jobResultMessage = "failed"
 	}
-
 	logger.WithField("jobResult", jobResult).Infof("\U0001F3C1  Job %s", jobResultMessage)
 }
 

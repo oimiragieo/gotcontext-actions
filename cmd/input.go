@@ -44,7 +44,11 @@ type Input struct {
 	artifactServerPath                 string
 	artifactServerAddr                 string
 	artifactServerPort                 string
+	noArtifactServer                   bool
 	noCacheServer                      bool
+	strictPlatforms                    bool
+	oidcMock                           bool
+	environmentSecrets                 []string
 	cacheServerPath                    string
 	cacheServerExternalURL             string
 	cacheServerAddr                    string

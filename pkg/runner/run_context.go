@@ -16,14 +16,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/go-connections/nat"
 	"github.com/nektos/act/pkg/common"
 	"github.com/nektos/act/pkg/container"
-	"github.com/nektos/act/pkg/exprparser"
 	"github.com/nektos/act/pkg/model"
 	"github.com/opencontainers/selinux/go-selinux"
 )
@@ -53,6 +51,7 @@ type RunContext struct {
 	caller              *caller // job calling this RunContext (reusable workflows)
 	Cancelled           bool
 	nodeToolFullPath    string
+	stepSummaries       map[string]string
 }
 
 func (rc *RunContext) AddMask(mask string) {
@@ -155,11 +154,12 @@ func (rc *RunContext) GetBindsAndMounts() ([]string, map[string]string) {
 	if job := rc.Run.Job(); job != nil {
 		if container := job.Container(); container != nil {
 			for _, v := range container.Volumes {
-				if !strings.Contains(v, ":") || filepath.IsAbs(v) {
-					// Bind anonymous volume or host file.
+				// Host binds are absolute paths (unix `/...` or windows `X:\...`).
+				// Named volumes look like `volume-id:/path` without a leading slash/drive.
+				hostPart := strings.SplitN(v, ":", 2)[0]
+				if !strings.Contains(v, ":") || strings.HasPrefix(v, "/") || filepath.IsAbs(hostPart) {
 					binds = append(binds, v)
 				} else {
-					// Mount existing volume.
 					paths := strings.SplitN(v, ":", 2)
 					mounts[paths[0]] = paths[1]
 				}
@@ -731,99 +731,6 @@ func (rc *RunContext) Executor() (common.Executor, error) {
 	}, nil
 }
 
-func (rc *RunContext) containerImage(ctx context.Context) string {
-	job := rc.Run.Job()
-
-	c := job.Container()
-	if c != nil {
-		return rc.ExprEval.Interpolate(ctx, c.Image)
-	}
-
-	return ""
-}
-
-func (rc *RunContext) runsOnImage(ctx context.Context) string {
-	if rc.Run.Job().RunsOn() == nil {
-		common.Logger(ctx).Errorf("'runs-on' key not defined in %s", rc.String())
-	}
-
-	for _, platformName := range rc.runsOnPlatformNames(ctx) {
-		image := rc.Config.Platforms[strings.ToLower(platformName)]
-		if image != "" {
-			return image
-		}
-	}
-
-	return ""
-}
-
-func (rc *RunContext) runsOnPlatformNames(ctx context.Context) []string {
-	job := rc.Run.Job()
-
-	if job.RunsOn() == nil {
-		return []string{}
-	}
-
-	if err := rc.ExprEval.EvaluateYamlNode(ctx, &job.RawRunsOn); err != nil {
-		common.Logger(ctx).Errorf("Error while evaluating runs-on: %v", err)
-		return []string{}
-	}
-
-	return job.RunsOn()
-}
-
-func (rc *RunContext) platformImage(ctx context.Context) string {
-	if containerImage := rc.containerImage(ctx); containerImage != "" {
-		return containerImage
-	}
-
-	return rc.runsOnImage(ctx)
-}
-
-func (rc *RunContext) options(ctx context.Context) string {
-	job := rc.Run.Job()
-	c := job.Container()
-	if c != nil {
-		return rc.ExprEval.Interpolate(ctx, c.Options)
-	}
-
-	return rc.Config.ContainerOptions
-}
-
-func (rc *RunContext) isEnabled(ctx context.Context) (bool, error) {
-	job := rc.Run.Job()
-	l := common.Logger(ctx)
-	runJob, runJobErr := EvalBool(ctx, rc.ExprEval, job.If.Value, exprparser.DefaultStatusCheckSuccess)
-	jobType, jobTypeErr := job.Type()
-
-	if runJobErr != nil {
-		return false, fmt.Errorf("  \u274C  Error in if-expression: \"if: %s\" (%s)", job.If.Value, runJobErr)
-	}
-
-	if jobType == model.JobTypeInvalid {
-		return false, jobTypeErr
-	}
-
-	if !runJob {
-		rc.result("skipped")
-		l.WithField("jobResult", "skipped").Debugf("Skipping job '%s' due to '%s'", job.Name, job.If.Value)
-		return false, nil
-	}
-
-	if jobType != model.JobTypeDefault {
-		return true, nil
-	}
-
-	img := rc.platformImage(ctx)
-	if img == "" {
-		for _, platformName := range rc.runsOnPlatformNames(ctx) {
-			l.Infof("\U0001F6A7  Skipping unsupported platform -- Try running with `-P %+v=...`", platformName)
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
 func mergeMaps(maps ...map[string]string) map[string]string {
 	rtnMap := make(map[string]string)
 	for _, m := range maps {
@@ -1022,131 +929,6 @@ func nestedMapLookup(m map[string]interface{}, ks ...string) (rval interface{}) 
 	}
 	// 1+ more keys
 	return nestedMapLookup(m, ks[1:]...)
-}
-
-func (rc *RunContext) withGithubEnv(ctx context.Context, github *model.GithubContext, env map[string]string) map[string]string {
-	env["CI"] = "true"
-	env["GITHUB_WORKFLOW"] = github.Workflow
-	env["GITHUB_RUN_ATTEMPT"] = github.RunAttempt
-	env["GITHUB_RUN_ID"] = github.RunID
-	env["GITHUB_RUN_NUMBER"] = github.RunNumber
-	env["GITHUB_ACTION"] = github.Action
-	env["GITHUB_ACTION_PATH"] = github.ActionPath
-	env["GITHUB_ACTION_REPOSITORY"] = github.ActionRepository
-	env["GITHUB_ACTION_REF"] = github.ActionRef
-	env["GITHUB_ACTIONS"] = "true"
-	env["GITHUB_ACTOR"] = github.Actor
-	env["GITHUB_REPOSITORY"] = github.Repository
-	env["GITHUB_EVENT_NAME"] = github.EventName
-	env["GITHUB_EVENT_PATH"] = github.EventPath
-	env["GITHUB_WORKSPACE"] = github.Workspace
-	env["GITHUB_SHA"] = github.Sha
-	env["GITHUB_REF"] = github.Ref
-	env["GITHUB_REF_NAME"] = github.RefName
-	env["GITHUB_REF_TYPE"] = github.RefType
-	env["GITHUB_JOB"] = github.Job
-	env["GITHUB_REPOSITORY_OWNER"] = github.RepositoryOwner
-	env["GITHUB_RETENTION_DAYS"] = github.RetentionDays
-	env["RUNNER_PERFLOG"] = github.RunnerPerflog
-	env["RUNNER_TRACKING_ID"] = github.RunnerTrackingID
-	env["GITHUB_BASE_REF"] = github.BaseRef
-	env["GITHUB_HEAD_REF"] = github.HeadRef
-	env["GITHUB_SERVER_URL"] = github.ServerURL
-	env["GITHUB_API_URL"] = github.APIURL
-	env["GITHUB_GRAPHQL_URL"] = github.GraphQLURL
-
-	if rc.Config.ArtifactServerPath != "" {
-		setActionRuntimeVars(rc, env)
-	}
-
-	for _, platformName := range rc.runsOnPlatformNames(ctx) {
-		if platformName != "" {
-			if platformName == "ubuntu-latest" {
-				// hardcode current ubuntu-latest since we have no way to check that 'on the fly'
-				env["ImageOS"] = "ubuntu20"
-			} else {
-				platformName = strings.SplitN(strings.Replace(platformName, `-`, ``, 1), `.`, 2)[0]
-				env["ImageOS"] = platformName
-			}
-		}
-	}
-
-	return env
-}
-
-func setActionRuntimeVars(rc *RunContext, env map[string]string) {
-	actionsRuntimeURL := os.Getenv("ACTIONS_RUNTIME_URL")
-	if actionsRuntimeURL == "" {
-		actionsRuntimeURL = fmt.Sprintf("http://%s:%s/", rc.Config.ArtifactServerAddr, rc.Config.ArtifactServerPort)
-	}
-	env["ACTIONS_RUNTIME_URL"] = actionsRuntimeURL
-	env["ACTIONS_RESULTS_URL"] = actionsRuntimeURL
-
-	actionsRuntimeToken := os.Getenv("ACTIONS_RUNTIME_TOKEN")
-	if actionsRuntimeToken == "" {
-		runID := int64(1)
-		if rid, ok := rc.Config.Env["GITHUB_RUN_ID"]; ok {
-			runID, _ = strconv.ParseInt(rid, 10, 64)
-		}
-		actionsRuntimeToken, _ = common.CreateAuthorizationToken(runID, runID, runID)
-	}
-	env["ACTIONS_RUNTIME_TOKEN"] = actionsRuntimeToken
-}
-
-func (rc *RunContext) handleCredentials(ctx context.Context) (string, string, error) {
-	// TODO: remove below 2 lines when we can release act with breaking changes
-	username := rc.Config.Secrets["DOCKER_USERNAME"]
-	password := rc.Config.Secrets["DOCKER_PASSWORD"]
-
-	container := rc.Run.Job().Container()
-	if container == nil || container.Credentials == nil {
-		return username, password, nil
-	}
-
-	if container.Credentials != nil && len(container.Credentials) != 2 {
-		err := fmt.Errorf("invalid property count for key 'credentials:'")
-		return "", "", err
-	}
-
-	ee := rc.NewExpressionEvaluator(ctx)
-	if username = ee.Interpolate(ctx, container.Credentials["username"]); username == "" {
-		err := fmt.Errorf("failed to interpolate container.credentials.username")
-		return "", "", err
-	}
-	if password = ee.Interpolate(ctx, container.Credentials["password"]); password == "" {
-		err := fmt.Errorf("failed to interpolate container.credentials.password")
-		return "", "", err
-	}
-
-	if container.Credentials["username"] == "" || container.Credentials["password"] == "" {
-		err := fmt.Errorf("container.credentials cannot be empty")
-		return "", "", err
-	}
-
-	return username, password, nil
-}
-
-func (rc *RunContext) handleServiceCredentials(ctx context.Context, creds map[string]string) (username, password string, err error) {
-	if creds == nil {
-		return
-	}
-	if len(creds) != 2 {
-		err = fmt.Errorf("invalid property count for key 'credentials:'")
-		return
-	}
-
-	ee := rc.NewExpressionEvaluator(ctx)
-	if username = ee.Interpolate(ctx, creds["username"]); username == "" {
-		err = fmt.Errorf("failed to interpolate credentials.username")
-		return
-	}
-
-	if password = ee.Interpolate(ctx, creds["password"]); password == "" {
-		err = fmt.Errorf("failed to interpolate credentials.password")
-		return
-	}
-
-	return
 }
 
 // GetServiceBindsAndMounts returns the binds and mounts for the service container, resolving paths as appropriate

@@ -19,7 +19,7 @@ import (
 	"net/netip"
 
 	"dario.cat/mergo"
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/docker/cli/cli/connhelper"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-git/go-billy/v5/helper/polyfill"

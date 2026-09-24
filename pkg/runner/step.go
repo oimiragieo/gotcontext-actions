@@ -75,7 +75,12 @@ func processRunnerSummaryCommand(ctx context.Context, fileName string, rc *RunCo
 	if len(summary) == 0 {
 		return nil
 	}
-	common.Logger(ctx).WithFields(logrus.Fields{"command": "summary", "content": string(summary)}).Infof("  \U00002699  Summary - %s", string(summary))
+	body := string(summary)
+	if rc.stepSummaries == nil {
+		rc.stepSummaries = map[string]string{}
+	}
+	rc.stepSummaries[rc.CurrentStep] = body
+	common.Logger(ctx).WithFields(logrus.Fields{"command": "summary", "content": body}).Infof("  \U00002699  Summary - %s", body)
 	return nil
 }
 

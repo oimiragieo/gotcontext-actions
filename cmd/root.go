@@ -31,6 +31,7 @@ import (
 	"github.com/nektos/act/pkg/container"
 	"github.com/nektos/act/pkg/gh"
 	"github.com/nektos/act/pkg/model"
+	"github.com/nektos/act/pkg/oidc"
 	"github.com/nektos/act/pkg/runner"
 )
 
@@ -114,11 +115,15 @@ func createRootCommand(ctx context.Context, input *Input, version string) *cobra
 	rootCmd.PersistentFlags().StringVarP(&input.containerDaemonSocket, "container-daemon-socket", "", "", "URI to Docker Engine socket (e.g.: unix://~/.docker/run/docker.sock or - to disable bind mounting the socket)")
 	rootCmd.PersistentFlags().StringVarP(&input.containerOptions, "container-options", "", "", "Custom docker container options for the job container without an options property in the job definition")
 	rootCmd.PersistentFlags().StringVarP(&input.githubInstance, "github-instance", "", "github.com", "GitHub instance to use. Only use this when using GitHub Enterprise Server.")
-	rootCmd.PersistentFlags().StringVarP(&input.artifactServerPath, "artifact-server-path", "", "", "Defines the path where the artifact server stores uploads and retrieves downloads from. If not specified the artifact server will not start.")
+	rootCmd.PersistentFlags().StringVarP(&input.artifactServerPath, "artifact-server-path", "", "", "Defines the path where the artifact server stores uploads and retrieves downloads from. Defaults to cache home/artifacts unless --no-artifact-server is set.")
 	rootCmd.PersistentFlags().StringVarP(&input.artifactServerAddr, "artifact-server-addr", "", common.GetOutboundIP().String(), "Defines the address to which the artifact server binds.")
 	rootCmd.PersistentFlags().StringVarP(&input.artifactServerPort, "artifact-server-port", "", "34567", "Defines the port where the artifact server listens.")
+	rootCmd.PersistentFlags().BoolVarP(&input.noArtifactServer, "no-artifact-server", "", false, "Disable the local artifact server")
 	rootCmd.PersistentFlags().BoolVarP(&input.noSkipCheckout, "no-skip-checkout", "", false, "Use actions/checkout instead of copying local files into container")
 	rootCmd.PersistentFlags().BoolVarP(&input.noCacheServer, "no-cache-server", "", false, "Disable cache server")
+	rootCmd.PersistentFlags().BoolVarP(&input.strictPlatforms, "strict-platforms", "", false, "Fail when a job's runs-on platform has no mapped container image instead of skipping")
+	rootCmd.PersistentFlags().BoolVarP(&input.oidcMock, "oidc-mock", "", false, "Start a local mock OIDC token endpoint (ACTIONS_ID_TOKEN_REQUEST_URL)")
+	rootCmd.PersistentFlags().StringArrayVar(&input.environmentSecrets, "env-secret-file", []string{}, "Load secrets for a deployment environment (format: name=path/to/envfile)")
 	rootCmd.PersistentFlags().StringVarP(&input.cacheServerPath, "cache-server-path", "", filepath.Join(CacheHomeDir, "actcache"), "Defines the path where the cache server stores caches.")
 	rootCmd.PersistentFlags().StringVarP(&input.cacheServerExternalURL, "cache-server-external-url", "", "", "Defines the external URL for if the cache server is behind a proxy. e.g.: https://act-cache-server.example.com. Be careful that there is no trailing slash.")
 	rootCmd.PersistentFlags().StringVarP(&input.cacheServerAddr, "cache-server-addr", "", common.GetOutboundIP().String(), "Defines the address to which the cache server binds.")
@@ -645,6 +650,16 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			Matrix:                             matrixes,
 			ContainerNetworkMode:               docker_container.NetworkMode(input.networkName),
 			ConcurrentJobs:                     input.concurrentJobs,
+			StrictPlatforms:                    input.strictPlatforms,
+			OIDCMock:                           input.oidcMock,
+			EnvironmentSecrets:                 loadEnvironmentSecretFiles(input.environmentSecrets),
+		}
+		if !input.noArtifactServer && config.ArtifactServerPath == "" {
+			config.ArtifactServerPath = filepath.Join(CacheHomeDir, "artifacts")
+			input.artifactServerPath = config.ArtifactServerPath
+		} else if input.noArtifactServer {
+			config.ArtifactServerPath = ""
+			input.artifactServerPath = ""
 		}
 		if input.useNewActionCache || len(input.localRepository) > 0 {
 			if input.actionOfflineMode {
@@ -689,6 +704,22 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			envs[cacheURLKey] = cacheHandler.ExternalURL() + "/"
 		}
 
+		var oidcServer *oidc.Server
+		if input.oidcMock {
+			var err error
+			oidcServer, err = oidc.Start(map[string]any{
+				"repository": envs["GITHUB_REPOSITORY"],
+			})
+			if err != nil {
+				return err
+			}
+			envs["ACTIONS_ID_TOKEN_REQUEST_URL"] = oidcServer.RequestURL()
+			if envs["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] == "" {
+				envs["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = "act-oidc-mock-token"
+			}
+			common.Logger(ctx).Infof("OIDC mock listening at %s (not trusted by cloud providers)", oidcServer.URL)
+		}
+
 		ctx = common.WithDryrun(ctx, input.dryrun)
 		if watch, err := cmd.Flags().GetBool("watch"); err != nil {
 			return err
@@ -702,7 +733,12 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 
 		executor := r.NewPlanExecutor(plan).Finally(func(_ context.Context) error {
 			cancel()
-			_ = cacheHandler.Close()
+			if cacheHandler != nil {
+				_ = cacheHandler.Close()
+			}
+			if oidcServer != nil {
+				_ = oidcServer.Close()
+			}
 			return nil
 		})
 		err = executor(ctx)
@@ -730,11 +766,11 @@ func defaultImageSurvey(actrc string) error {
 	var option string
 	switch answer {
 	case "Large":
-		option = "-P ubuntu-latest=catthehacker/ubuntu:full-latest\n-P ubuntu-22.04=catthehacker/ubuntu:full-22.04\n-P ubuntu-20.04=catthehacker/ubuntu:full-20.04\n-P ubuntu-18.04=catthehacker/ubuntu:full-18.04\n"
+		option = "-P ubuntu-latest=catthehacker/ubuntu:full-latest\n-P ubuntu-24.04=catthehacker/ubuntu:full-24.04\n-P ubuntu-22.04=catthehacker/ubuntu:full-22.04\n-P ubuntu-20.04=catthehacker/ubuntu:full-20.04\n"
 	case "Medium":
-		option = "-P ubuntu-latest=catthehacker/ubuntu:act-latest\n-P ubuntu-22.04=catthehacker/ubuntu:act-22.04\n-P ubuntu-20.04=catthehacker/ubuntu:act-20.04\n-P ubuntu-18.04=catthehacker/ubuntu:act-18.04\n"
+		option = "-P ubuntu-latest=catthehacker/ubuntu:act-latest\n-P ubuntu-24.04=catthehacker/ubuntu:act-24.04\n-P ubuntu-22.04=catthehacker/ubuntu:act-22.04\n-P ubuntu-20.04=catthehacker/ubuntu:act-20.04\n"
 	case "Micro":
-		option = "-P ubuntu-latest=node:16-buster-slim\n-P ubuntu-22.04=node:16-bullseye-slim\n-P ubuntu-20.04=node:16-buster-slim\n-P ubuntu-18.04=node:16-buster-slim\n"
+		option = "-P ubuntu-latest=node:24-bookworm-slim\n-P ubuntu-24.04=node:24-bookworm-slim\n-P ubuntu-22.04=node:20-bookworm-slim\n-P ubuntu-20.04=node:20-bullseye-slim\n"
 	}
 
 	f, err := os.Create(actrc)

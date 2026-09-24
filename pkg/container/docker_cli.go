@@ -8,6 +8,9 @@
 //
 
 //nolint:unparam,errcheck
+// MAINTENANCE NOTE: Adapted from docker/cli opts. Prefer upstream packages or a
+// minimal subset when practical. Tests intentionally use gotest.tools (lint-isolated).
+
 package container
 
 import (

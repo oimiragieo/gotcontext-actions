@@ -50,19 +50,23 @@ func NewDebugExecutor(format string, args ...interface{}) Executor {
 	}
 }
 
-// NewPipelineExecutor creates a new executor from a series of other executors
+// NewPipelineExecutor creates a new executor from a series of other executors.
+// Nil executors are skipped (callers may pass an optional leading step).
 func NewPipelineExecutor(executors ...Executor) Executor {
-	if len(executors) == 0 {
-		return func(_ context.Context) error {
-			return nil
-		}
-	}
 	var rtn Executor
 	for _, executor := range executors {
+		if executor == nil {
+			continue
+		}
 		if rtn == nil {
 			rtn = executor
-		} else {
-			rtn = rtn.Then(executor)
+			continue
+		}
+		rtn = rtn.Then(executor)
+	}
+	if rtn == nil {
+		return func(_ context.Context) error {
+			return nil
 		}
 	}
 	return rtn
@@ -93,34 +97,64 @@ func NewErrorExecutor(err error) Executor {
 
 // NewParallelExecutor creates a new executor from a parallel of other executors
 func NewParallelExecutor(parallel int, executors ...Executor) Executor {
+	return newParallelExecutor(parallel, false, executors...)
+}
+
+// NewParallelFailFastExecutor runs executors in parallel and cancels remaining
+// work when the first non-warning error is returned (matrix fail-fast semantics).
+func NewParallelFailFastExecutor(parallel int, executors ...Executor) Executor {
+	return newParallelExecutor(parallel, true, executors...)
+}
+
+func newParallelExecutor(parallel int, failFast bool, executors ...Executor) Executor {
 	return func(ctx context.Context) error {
 		work := make(chan Executor, len(executors))
 		errs := make(chan error, len(executors))
 
-		if 1 > parallel {
+		if parallel < 1 {
 			log.Debugf("Parallel tasks (%d) below minimum, setting to 1", parallel)
 			parallel = 1
+		}
+
+		runCtx := ctx
+		var cancel context.CancelFunc
+		if failFast {
+			runCtx, cancel = context.WithCancel(ctx)
+			defer cancel()
 		}
 
 		for i := 0; i < parallel; i++ {
 			go func(work <-chan Executor, errs chan<- error) {
 				for executor := range work {
-					errs <- executor(ctx)
+					errs <- executor(runCtx)
 				}
 			}(work, errs)
 		}
 
-		for i := 0; i < len(executors); i++ {
-			work <- executors[i]
+		for _, executor := range executors {
+			work <- executor
 		}
 		close(work)
 
-		// Executor waits all executors to cleanup these resources.
+		// Wait for all executors so resources can clean up.
 		var firstErr error
-		for i := 0; i < len(executors); i++ {
+		for range executors {
 			err := <-errs
-			if firstErr == nil {
-				firstErr = err
+			if err == nil {
+				continue
+			}
+			if _, isWarning := err.(Warning); isWarning {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			if firstErr != nil {
+				continue
+			}
+			firstErr = err
+			if failFast {
+				cancel()
 			}
 		}
 

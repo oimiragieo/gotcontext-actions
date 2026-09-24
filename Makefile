@@ -58,7 +58,7 @@ lint-rest:
 		-v $(PWD):/tmp/lint \
 		-e GITHUB_STATUS_REPORTER=false \
 		-e GITHUB_COMMENT_REPORTER=false \
-		megalinter/megalinter-go:v5
+		megalinter/megalinter-go:v8
 
 .PHONY: lint
 lint: lint-go lint-rest
@@ -82,8 +82,9 @@ install: build
 
 .PHONY: installer
 installer:
-	@GO111MODULE=off go get github.com/goreleaser/godownloader
-	godownloader -r nektos/act -o install.sh
+	@echo "install.sh is maintained manually (godownloader is deprecated)."
+	@echo "After adding GoReleaser arches, update get_binaries() in install.sh."
+	@exit 1
 
 .PHONY: promote
 promote:

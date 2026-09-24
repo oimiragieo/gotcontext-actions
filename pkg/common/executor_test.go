@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -149,4 +150,35 @@ func TestNewParallelExecutorCanceled(t *testing.T) {
 	err := NewParallelExecutor(3, errorWorkflow, successWorkflow, successWorkflow)(ctx)
 	assert.Equal(3, count)
 	assert.Error(errExpected, err)
+}
+
+func TestNewParallelFailFastExecutor(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+
+	count := 0
+	var mu sync.Mutex
+	slowSuccess := NewPipelineExecutor(func(ctx context.Context) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+			mu.Lock()
+			count++
+			mu.Unlock()
+			return nil
+		}
+	})
+	errExpected := fmt.Errorf("error")
+	errorWorkflow := NewPipelineExecutor(func(_ context.Context) error {
+		mu.Lock()
+		count++
+		mu.Unlock()
+		return errExpected
+	})
+	err := NewParallelFailFastExecutor(3, errorWorkflow, slowSuccess, slowSuccess)(ctx)
+	assert.ErrorIs(err, errExpected)
+	mu.Lock()
+	defer mu.Unlock()
+	assert.GreaterOrEqual(count, 1)
 }

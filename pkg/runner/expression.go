@@ -382,7 +382,11 @@ func (ee expressionEvaluator) Interpolate(ctx context.Context, in string) string
 		return in
 	}
 
-	expr, _ := rewriteSubExpression(ctx, in, true)
+	expr, err := rewriteSubExpression(ctx, in, true)
+	if err != nil {
+		common.Logger(ctx).Errorf("Unable to rewrite expression '%s': %s", in, err)
+		return ""
+	}
 	evaluated, err := ee.evaluate(ctx, expr, exprparser.DefaultStatusCheckNone)
 	if err != nil {
 		common.Logger(ctx).Errorf("Unable to interpolate expression '%s': %s", expr, err)
@@ -391,7 +395,7 @@ func (ee expressionEvaluator) Interpolate(ctx context.Context, in string) string
 
 	value, ok := evaluated.(string)
 	if !ok {
-		panic(fmt.Sprintf("Expression %s did not evaluate to a string", expr))
+		return fmt.Sprintf("%v", evaluated)
 	}
 
 	return value
@@ -428,7 +432,7 @@ func rewriteSubExpression(ctx context.Context, in string, forceFormat bool) (str
 		if strStart > -1 {
 			matches := strPattern.FindStringIndex(in[pos:])
 			if matches == nil {
-				panic("unclosed string.")
+				return "", fmt.Errorf("unclosed string")
 			}
 
 			strStart = -1
@@ -453,7 +457,7 @@ func rewriteSubExpression(ctx context.Context, in string, forceFormat bool) (str
 			} else if strStart > -1 {
 				pos += strStart + 1
 			} else {
-				panic("unclosed expression.")
+				return "", fmt.Errorf("unclosed expression")
 			}
 		} else {
 			exprStart = strings.Index(in[pos:], "${{")
@@ -583,10 +587,36 @@ func getWorkflowSecrets(ctx context.Context, rc *RunContext) map[string]string {
 			secrets[k] = rc.caller.runContext.ExprEval.Interpolate(ctx, v)
 		}
 
-		return secrets
+		return mergeEnvironmentSecrets(rc.caller.runContext, secrets)
 	}
 
-	return rc.Config.Secrets
+	return mergeEnvironmentSecrets(rc, rc.Config.Secrets)
+}
+
+func mergeEnvironmentSecrets(rc *RunContext, base map[string]string) map[string]string {
+	if rc == nil || rc.Config == nil || len(rc.Config.EnvironmentSecrets) == 0 || rc.Run == nil {
+		return base
+	}
+	job := rc.Run.Job()
+	if job == nil {
+		return base
+	}
+	envName := job.EnvironmentName()
+	if envName == "" {
+		return base
+	}
+	extra, ok := rc.Config.EnvironmentSecrets[envName]
+	if !ok || len(extra) == 0 {
+		return base
+	}
+	out := map[string]string{}
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
 }
 
 func getWorkflowVars(_ context.Context, rc *RunContext) map[string]string {

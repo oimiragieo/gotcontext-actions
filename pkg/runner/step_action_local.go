@@ -26,22 +26,16 @@ type stepActionLocal struct {
 	action              *model.Action
 }
 
-func (sal *stepActionLocal) pre() common.Executor {
-	sal.env = map[string]string{}
-
-	return func(_ context.Context) error {
-		return nil
-	}
-}
-
-func (sal *stepActionLocal) main() common.Executor {
-	return runStepExecutor(sal, stepStageMain, func(ctx context.Context) error {
+func (sal *stepActionLocal) prepareActionExecutor() common.Executor {
+	return func(ctx context.Context) error {
+		if sal.action != nil {
+			return nil
+		}
 		if common.Dryrun(ctx) {
 			return nil
 		}
 
 		actionDir := filepath.Join(sal.getRunContext().Config.Workdir, sal.Step.Uses)
-
 		localReader := func(ctx context.Context) actionYamlReader {
 			_, cpath := getContainerActionPaths(sal.Step, path.Join(actionDir, ""), sal.RunContext)
 			return func(filename string) (io.Reader, io.Closer, error) {
@@ -77,11 +71,60 @@ func (sal *stepActionLocal) main() common.Executor {
 		if err != nil {
 			return err
 		}
-
 		sal.action = actionModel
+		return nil
+	}
+}
 
-		return sal.runAction(sal, actionDir, nil)(ctx)
-	})
+func (sal *stepActionLocal) pre() common.Executor {
+	sal.env = map[string]string{}
+
+	return common.NewPipelineExecutor(
+		// Pre runs before any main steps. Local actions may be created by an earlier
+		// step (e.g. writing action.yml), so missing definitions are deferred to main.
+		func(ctx context.Context) error {
+			err := sal.prepareActionExecutor()(ctx)
+			if err != nil && isActionDefinitionMissing(err) {
+				return nil
+			}
+			return err
+		},
+		runStepExecutor(sal, stepStagePre, runPreStep(sal)).If(hasPreStep(sal)).If(shouldRunPreStep(sal)))
+}
+
+func isActionDefinitionMissing(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Join of "yml/yaml/Dockerfile missing" must require every entry to be not-exist
+	// (errors.Is on a multi-error is true if any match).
+	var joined interface{ Unwrap() []error }
+	if errors.As(err, &joined) {
+		errs := joined.Unwrap()
+		if len(errs) == 0 {
+			return false
+		}
+		for _, e := range errs {
+			if !isActionDefinitionMissing(e) {
+				return false
+			}
+		}
+		return true
+	}
+	return errors.Is(err, fs.ErrNotExist) || errors.Is(err, os.ErrNotExist)
+}
+
+func (sal *stepActionLocal) main() common.Executor {
+	return common.NewPipelineExecutor(
+		sal.prepareActionExecutor(),
+		runStepExecutor(sal, stepStageMain, func(ctx context.Context) error {
+			if common.Dryrun(ctx) {
+				return nil
+			}
+			actionDir := filepath.Join(sal.getRunContext().Config.Workdir, sal.Step.Uses)
+			return sal.runAction(sal, actionDir, nil)(ctx)
+		}),
+	)
 }
 
 func (sal *stepActionLocal) post() common.Executor {
@@ -106,10 +149,16 @@ func (sal *stepActionLocal) getEnv() *map[string]string {
 
 func (sal *stepActionLocal) getIfExpression(_ context.Context, stage stepStage) string {
 	switch stage {
+	case stepStagePre:
+		if action := sal.getActionModel(); action != nil {
+			return action.Runs.PreIf
+		}
 	case stepStageMain:
 		return sal.Step.If.Value
 	case stepStagePost:
-		return sal.action.Runs.PostIf
+		if action := sal.getActionModel(); action != nil {
+			return action.Runs.PostIf
+		}
 	}
 	return ""
 }
@@ -122,7 +171,6 @@ func (sal *stepActionLocal) getCompositeRunContext(ctx context.Context) *RunCont
 	if sal.compositeRunContext == nil {
 		actionDir := filepath.Join(sal.RunContext.Config.Workdir, sal.Step.Uses)
 		_, containerActionDir := getContainerActionPaths(sal.getStepModel(), actionDir, sal.RunContext)
-
 		sal.compositeRunContext = newCompositeRunContext(ctx, sal.RunContext, sal, containerActionDir)
 		sal.compositeSteps = sal.compositeRunContext.compositeExecutor(sal.action)
 	}

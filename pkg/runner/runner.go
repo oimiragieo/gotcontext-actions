@@ -62,6 +62,9 @@ type Config struct {
 	ContainerNetworkMode               docker_container.NetworkMode // the network mode of job containers (the value of --network)
 	ActionCache                        ActionCache                  // Use a custom ActionCache Implementation
 	ConcurrentJobs                     int                          // Number of max concurrent jobs
+	StrictPlatforms                    bool                         // Fail instead of skipping unmapped platforms
+	OIDCMock                           bool                         // Start a local OIDC mock token endpoint
+	EnvironmentSecrets                 map[string]map[string]string // secrets keyed by deployment environment name
 }
 
 func (config *Config) GetConcurrentJobs() int {
@@ -179,8 +182,10 @@ func (runner *runnerImpl) NewPlanExecutor(plan *model.Plan) common.Executor {
 				log.Debugf("Final matrix after applying user inclusions '%v'", matrixes)
 
 				maxParallel := 4
+				failFast := true
 				if job.Strategy != nil {
 					maxParallel = job.Strategy.MaxParallel
+					failFast = job.Strategy.FailFast
 				}
 
 				if len(matrixes) < maxParallel {
@@ -207,7 +212,11 @@ func (runner *runnerImpl) NewPlanExecutor(plan *model.Plan) common.Executor {
 						return executor(common.WithJobErrorContainer(WithJobLogger(ctx, rc.Run.JobID, jobName, rc.Config, &rc.Masks, matrix)))
 					})
 				}
-				pipeline = append(pipeline, common.NewParallelExecutor(maxParallel, stageExecutor...))
+				if failFast {
+					pipeline = append(pipeline, common.NewParallelFailFastExecutor(maxParallel, stageExecutor...))
+				} else {
+					pipeline = append(pipeline, common.NewParallelExecutor(maxParallel, stageExecutor...))
+				}
 			}
 
 			log.Debugf("PlanExecutor concurrency: %d", runner.config.GetConcurrentJobs())
@@ -215,7 +224,16 @@ func (runner *runnerImpl) NewPlanExecutor(plan *model.Plan) common.Executor {
 		})
 	}
 
-	return common.NewPipelineExecutor(stagePipeline...).Then(handleFailure(plan))
+	return wrapPlanWithConcurrency(common.NewPipelineExecutor(stagePipeline...).Then(handleFailure(plan)))
+}
+
+func wrapPlanWithConcurrency(exec common.Executor) common.Executor {
+	return func(ctx context.Context) error {
+		if common.GetConcurrencyController(ctx) == nil {
+			ctx = common.WithConcurrencyController(ctx, common.NewConcurrencyController())
+		}
+		return exec(ctx)
+	}
 }
 
 func handleFailure(plan *model.Plan) common.Executor {
@@ -252,12 +270,13 @@ func selectMatrixes(originalMatrixes []map[string]interface{}, targetMatrixValue
 
 func (runner *runnerImpl) newRunContext(ctx context.Context, run *model.Run, matrix map[string]interface{}) *RunContext {
 	rc := &RunContext{
-		Config:      runner.config,
-		Run:         run,
-		EventJSON:   runner.eventJSON,
-		StepResults: make(map[string]*model.StepResult),
-		Matrix:      matrix,
-		caller:      runner.caller,
+		Config:        runner.config,
+		Run:           run,
+		EventJSON:     runner.eventJSON,
+		StepResults:   make(map[string]*model.StepResult),
+		Matrix:        matrix,
+		caller:        runner.caller,
+		stepSummaries: make(map[string]string),
 	}
 	rc.ExprEval = rc.NewExpressionEvaluator(ctx)
 	rc.Name = rc.ExprEval.Interpolate(ctx, run.String())

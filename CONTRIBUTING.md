@@ -54,13 +54,13 @@ When submitting code, please make every effort to follow existing conventions an
 - For details on the approved style, check out [Effective Go](https://golang.org/doc/effective_go.html).
 - Before running tests, please be aware that they are multi-architecture so for them to not fail, you need to run `docker run --privileged --rm tonistiigi/binfmt --install amd64,arm64` before ([more info available in #765](https://github.com/nektos/act/issues/765)).
 
-Also, consider the original design principles:
+Also, consider act's design principles:
 
-- **Polyglot** - There will be no prescribed language or framework for developing the microservices. The only requirement will be that the service will be run inside a container and exposed via an HTTP endpoint.
-- **Cloud Provider** - At this point, the tool will assume AWS for the cloud provider and will not be written in a cloud agnostic manner. However, this does not preclude refactoring to add support for other providers at a later time.
-- **Declarative** - All resource administration will be handled in a declarative vs. imperative manner. A file will be used to declared the desired state of the resources and the tool will simply assert the actual state matches the desired state. The tool will accomplish this by generating CloudFormation templates.
-- **Stateless** - The tool will not maintain its own state. Rather, it will rely on the CloudFormation stacks to determine the state of the platform.
-- **Secure** - All security will be managed by AWS IAM credentials. No additional authentication or authorization mechanisms will be introduced.
+- **Local fidelity** - Prefer behavior that matches GitHub Actions runners where it is practical to emulate locally (expressions, steps, containers, artifacts/cache).
+- **Composable executors** - Prefer small `Executor` chains over large imperative control flow.
+- **Honest gaps** - Document features that cannot be fully cloned locally (OIDC signing, deployment protection rules, hosted Windows/macOS VMs) instead of pretending full parity.
+- **Docker-first** - Default execution uses containers; host/`-self-hosted` is an escape hatch, not a full runner replacement.
+- **Upstream-friendly** - Prefer small, tested changes that can merge to `nektos/act`.
 
 ### License
 

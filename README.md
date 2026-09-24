@@ -1,8 +1,14 @@
-![act-logo](https://raw.githubusercontent.com/wiki/nektos/act/img/logo-150.png)
+# gotcontext-actions
 
-# Overview [![push](https://github.com/nektos/act/workflows/push/badge.svg?branch=master&event=push)](https://github.com/nektos/act/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/nektos/act)](https://goreportcard.com/report/github.com/nektos/act) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners)
+Local GitHub Actions runner for development and CI dogfooding.
 
-> "Think globally, `act` locally"
+**Derived from [nektos/act](https://github.com/nektos/act)** (MIT). See [NOTICE](NOTICE) and [LICENSE](LICENSE). Upstream project: [nektos/act](https://github.com/nektos/act). This is not an official nektos product.
+
+Compatibility with GitHub Actions is intentionally incomplete; see [PARITY.md](PARITY.md).
+
+## Overview
+
+> "Think globally, run locally"
 
 Run your [GitHub Actions](https://developer.github.com/actions/) locally! Why would you want to do this? Two reasons:
 
@@ -25,6 +31,8 @@ Let's see it in action with a [sample repo](https://github.com/cplee/github-acti
 
 Please look at the [act user guide](https://nektosact.com) for more documentation.
 
+Compatibility with GitHub Actions is intentionally incomplete; see [PARITY.md](PARITY.md) for what works, what is mocked, and what cannot be cloned locally.
+
 # Support
 
 Need help? Ask in [discussions](https://github.com/nektos/act/discussions)!
@@ -35,7 +43,7 @@ Want to contribute to act? Awesome! Check out the [contributing guidelines](CONT
 
 ## Manually building from source
 
-- Install Go tools 1.20+ - (<https://golang.org/doc/install>)
+- Install Go tools 1.25+ - (<https://golang.org/doc/install>)
 - Clone this repo `git clone git@github.com:nektos/act.git`
 - Run unit tests with `make test`
 - Build and install: `make install`

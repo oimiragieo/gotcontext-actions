@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -121,7 +122,7 @@ runs:
 			}
 
 			writeFile := func(filename string, _ []byte, perm fs.FileMode) error {
-				assert.Equal(t, "actionDir/actionPath/trampoline.js", filename)
+				assert.Equal(t, "actionDir/actionPath/trampoline.js", filepath.ToSlash(filename))
 				assert.Equal(t, fs.FileMode(0400), perm)
 				return nil
 			}

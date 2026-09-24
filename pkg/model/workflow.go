@@ -17,12 +17,21 @@ import (
 
 // Workflow is the structure of the files in .github/workflows
 type Workflow struct {
-	File     string
-	Name     string            `yaml:"name"`
-	RawOn    yaml.Node         `yaml:"on"`
-	Env      map[string]string `yaml:"env"`
-	Jobs     map[string]*Job   `yaml:"jobs"`
-	Defaults Defaults          `yaml:"defaults"`
+	File        string
+	Name        string            `yaml:"name"`
+	RunName     string            `yaml:"run-name"`
+	RawOn       yaml.Node         `yaml:"on"`
+	Env         map[string]string `yaml:"env"`
+	Jobs        map[string]*Job   `yaml:"jobs"`
+	Defaults    Defaults          `yaml:"defaults"`
+	Concurrency *Concurrency      `yaml:"concurrency"`
+	Permissions yaml.Node         `yaml:"permissions"`
+}
+
+// Concurrency controls cancel-in-progress groups within a single act invocation.
+type Concurrency struct {
+	Group            string `yaml:"group"`
+	CancelInProgress bool   `yaml:"cancel-in-progress"`
 }
 
 // On events for the workflow
@@ -194,22 +203,26 @@ func (w *Workflow) WorkflowCallConfig() *WorkflowCall {
 
 // Job is the structure of one job in a workflow
 type Job struct {
-	Name           string                    `yaml:"name"`
-	RawNeeds       yaml.Node                 `yaml:"needs"`
-	RawRunsOn      yaml.Node                 `yaml:"runs-on"`
-	Env            yaml.Node                 `yaml:"env"`
-	If             yaml.Node                 `yaml:"if"`
-	Steps          []*Step                   `yaml:"steps"`
-	TimeoutMinutes string                    `yaml:"timeout-minutes"`
-	Services       map[string]*ContainerSpec `yaml:"services"`
-	Strategy       *Strategy                 `yaml:"strategy"`
-	RawContainer   yaml.Node                 `yaml:"container"`
-	Defaults       Defaults                  `yaml:"defaults"`
-	Outputs        map[string]string         `yaml:"outputs"`
-	Uses           string                    `yaml:"uses"`
-	With           map[string]interface{}    `yaml:"with"`
-	RawSecrets     yaml.Node                 `yaml:"secrets"`
-	Result         string
+	Name            string                    `yaml:"name"`
+	RawNeeds        yaml.Node                 `yaml:"needs"`
+	RawRunsOn       yaml.Node                 `yaml:"runs-on"`
+	Env             yaml.Node                 `yaml:"env"`
+	If              yaml.Node                 `yaml:"if"`
+	Steps           []*Step                   `yaml:"steps"`
+	TimeoutMinutes  string                    `yaml:"timeout-minutes"`
+	Services        map[string]*ContainerSpec `yaml:"services"`
+	Strategy        *Strategy                 `yaml:"strategy"`
+	RawContainer    yaml.Node                 `yaml:"container"`
+	Defaults        Defaults                  `yaml:"defaults"`
+	Outputs         map[string]string         `yaml:"outputs"`
+	Uses            string                    `yaml:"uses"`
+	With            map[string]interface{}    `yaml:"with"`
+	RawSecrets      yaml.Node                 `yaml:"secrets"`
+	ContinueOnError string                    `yaml:"continue-on-error"`
+	RawEnvironment  yaml.Node                 `yaml:"environment"`
+	Permissions     yaml.Node                 `yaml:"permissions"`
+	Concurrency     *Concurrency              `yaml:"concurrency"`
+	Result          string
 }
 
 // Strategy for the job
