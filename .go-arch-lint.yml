@@ -1,0 +1,57 @@
+# go-arch-lint — optional; primary fitness is depguard in .golangci.yml.
+# Install: go install github.com/fe3dback/go-arch-lint/cmd/go-arch-lint@latest
+version: 2
+workdir: .
+components:
+  cmd:
+    in: cmd/**
+  runner:
+    in: internal/runner/**
+  container:
+    in: internal/container/**
+  artifacts:
+    in: internal/artifacts/**
+  artifactcache:
+    in: internal/artifactcache/**
+  oidc:
+    in: internal/oidc/**
+  model:
+    in: internal/model/**
+  common:
+    in: internal/common/**
+deps:
+  cmd:
+    mayDependOn:
+      - runner
+      - container
+      - artifacts
+      - artifactcache
+      - oidc
+      - model
+      - common
+  runner:
+    mayDependOn:
+      - container
+      - artifacts
+      - artifactcache
+      - oidc
+      - model
+      - common
+  container:
+    mayDependOn:
+      - common
+  artifacts:
+    mayDependOn:
+      - common
+      - model
+  artifactcache:
+    mayDependOn:
+      - common
+  oidc:
+    mayDependOn:
+      - common
+  model:
+    mayDependOn:
+      - common
+  common:
+    mayDependOn: []

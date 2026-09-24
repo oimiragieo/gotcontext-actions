@@ -28,6 +28,21 @@ linters:
               desc: Please keep tests unified using only github.com/stretchr/testify
             - pkg: log
               desc: Please keep logging unified using only github.com/sirupsen/logrus
+        # Architecture fitness: adapters must not import the orchestrator.
+        no-container-to-runner:
+          files:
+            - "**/internal/container/**"
+          deny:
+            - pkg: github.com/oimiragieo/gotcontext-actions/internal/runner
+              desc: container must not import runner (dependency direction)
+        no-artifacts-to-runner:
+          files:
+            - "**/internal/artifacts/**"
+            - "**/internal/artifactcache/**"
+            - "**/internal/oidc/**"
+          deny:
+            - pkg: github.com/oimiragieo/gotcontext-actions/internal/runner
+              desc: adapters must not import runner (dependency direction)
     gocritic:
       disabled-checks:
         - ifElseChain
