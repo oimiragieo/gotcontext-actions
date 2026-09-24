@@ -770,7 +770,7 @@ func defaultImageSurvey(actrc string) error {
 	case "Medium":
 		option = "-P ubuntu-latest=catthehacker/ubuntu:act-latest\n-P ubuntu-24.04=catthehacker/ubuntu:act-24.04\n-P ubuntu-22.04=catthehacker/ubuntu:act-22.04\n-P ubuntu-20.04=catthehacker/ubuntu:act-20.04\n"
 	case "Micro":
-		option = "-P ubuntu-latest=node:24-bookworm-slim\n-P ubuntu-24.04=node:24-bookworm-slim\n-P ubuntu-22.04=node:20-bookworm-slim\n-P ubuntu-20.04=node:20-bullseye-slim\n"
+		option = "-P ubuntu-latest=node:22-bookworm-slim\n-P ubuntu-24.04=node:22-bookworm-slim\n-P ubuntu-22.04=node:20-bookworm-slim\n-P ubuntu-20.04=node:20-bullseye-slim\n"
 	}
 
 	f, err := os.Create(actrc)

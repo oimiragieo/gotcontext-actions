@@ -39,7 +39,7 @@ func TestListOptions(t *testing.T) {
 func TestRun(t *testing.T) {
 	rootCmd := createRootCommand(context.Background(), &Input{}, "")
 	err := newRunCommand(context.Background(), &Input{
-		platforms:     []string{"ubuntu-latest=node:24-bookworm-slim"},
+		platforms:     []string{"ubuntu-latest=node:22-bookworm-slim"},
 		workdir:       "../pkg/runner/testdata/",
 		workflowsPath: "./basic/push.yml",
 		dryrun:        true,
@@ -50,7 +50,7 @@ func TestRun(t *testing.T) {
 func TestRunPush(t *testing.T) {
 	rootCmd := createRootCommand(context.Background(), &Input{}, "")
 	err := newRunCommand(context.Background(), &Input{
-		platforms:     []string{"ubuntu-latest=node:24-bookworm-slim"},
+		platforms:     []string{"ubuntu-latest=node:22-bookworm-slim"},
 		workdir:       "../pkg/runner/testdata/",
 		workflowsPath: "./basic/push.yml",
 		dryrun:        true,
@@ -61,7 +61,7 @@ func TestRunPush(t *testing.T) {
 func TestRunPushJsonLogger(t *testing.T) {
 	rootCmd := createRootCommand(context.Background(), &Input{}, "")
 	err := newRunCommand(context.Background(), &Input{
-		platforms:     []string{"ubuntu-latest=node:24-bookworm-slim"},
+		platforms:     []string{"ubuntu-latest=node:22-bookworm-slim"},
 		workdir:       "../pkg/runner/testdata/",
 		workflowsPath: "./basic/push.yml",
 		dryrun:        true,
@@ -77,7 +77,7 @@ func TestFlags(t *testing.T) {
 			err := rootCmd.Flags().Set(f, "true")
 			assert.NoError(t, err)
 			err = newRunCommand(context.Background(), &Input{
-				platforms:     []string{"ubuntu-latest=node:24-bookworm-slim"},
+				platforms:     []string{"ubuntu-latest=node:22-bookworm-slim"},
 				workdir:       "../pkg/runner/testdata/",
 				workflowsPath: "./basic/push.yml",
 				dryrun:        true,

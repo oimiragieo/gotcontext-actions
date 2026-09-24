@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	git "github.com/go-git/go-git/v5"
@@ -31,10 +32,21 @@ type GoGitActionCache struct {
 	Path string
 }
 
+// Per-repository locks so concurrent matrix jobs cloning the same action do not corrupt the bare repo.
+var goGitActionCacheLocks sync.Map // gitPath -> *sync.Mutex
+
+func goGitActionCacheLock(gitPath string) *sync.Mutex {
+	v, _ := goGitActionCacheLocks.LoadOrStore(gitPath, &sync.Mutex{})
+	return v.(*sync.Mutex)
+}
+
 func (c GoGitActionCache) Fetch(ctx context.Context, cacheDir, url, ref, token string) (string, error) {
 	logger := common.Logger(ctx)
 
 	gitPath := path.Join(c.Path, safeFilename(cacheDir)+".git")
+	mu := goGitActionCacheLock(gitPath)
+	mu.Lock()
+	defer mu.Unlock()
 
 	logger.Infof("GoGitActionCache fetch %s with ref %s at %s", url, ref, gitPath)
 
@@ -131,6 +143,9 @@ func (c GoGitActionCache) GetTarArchive(ctx context.Context, cacheDir, sha, incl
 	logger := common.Logger(ctx)
 
 	gitPath := path.Join(c.Path, safeFilename(cacheDir)+".git")
+	mu := goGitActionCacheLock(gitPath)
+	mu.Lock()
+	defer mu.Unlock()
 
 	logger.Infof("GoGitActionCache get content %s with sha %s subpath '%s' at %s", cacheDir, sha, includePrefix, gitPath)
 

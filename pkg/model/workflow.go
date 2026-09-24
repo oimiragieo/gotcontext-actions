@@ -29,9 +29,26 @@ type Workflow struct {
 }
 
 // Concurrency controls cancel-in-progress groups within a single act invocation.
+// Supports GHA scalar form (`concurrency: my-group`) and mapping form.
 type Concurrency struct {
 	Group            string `yaml:"group"`
 	CancelInProgress bool   `yaml:"cancel-in-progress"`
+	// Queue is GitHub's concurrency.queue (single|max); advisory locally.
+	Queue string `yaml:"queue"`
+}
+
+// UnmarshalYAML accepts scalar group names or full concurrency mappings.
+func (c *Concurrency) UnmarshalYAML(node *yaml.Node) error {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.ScalarNode {
+		c.Group = node.Value
+		c.CancelInProgress = false
+		return nil
+	}
+	type raw Concurrency
+	return node.Decode((*raw)(c))
 }
 
 // On events for the workflow

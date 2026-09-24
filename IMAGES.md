@@ -12,8 +12,8 @@
 
 | Image                                   | Size                                                         |
 | --------------------------------------- | ------------------------------------------------------------ |
-| [`node:24-bookworm`][hub/_/node]        | ![`bookworm24-size`][hub/_/node/24-bookworm/size]            |
-| [`node:24-bookworm-slim`][hub/_/node]   | ![`micro-bookworm24-size`][hub/_/node/24-bookworm-slim/size] |
+| [`node:22-bookworm`][hub/_/node]        | ![`bookworm24-size`][hub/_/node/24-bookworm/size]            |
+| [`node:22-bookworm-slim`][hub/_/node]   | ![`micro-bookworm24-size`][hub/_/node/24-bookworm-slim/size] |
 | [`node:20-bookworm`][hub/_/node]        | ![`bookworm20-size`][hub/_/node/20-bookworm/size]            |
 | [`node:20-bookworm-slim`][hub/_/node]   | ![`micro-bookworm20-size`][hub/_/node/20-bookworm-slim/size] |
 | [`node:20-bullseye`][hub/_/node]        | ![`bullseye20-size`][hub/_/node/20-bullseye/size]            |

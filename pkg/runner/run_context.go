@@ -696,7 +696,7 @@ func (rc *RunContext) matrix() map[string]interface{} {
 }
 
 func (rc *RunContext) result(result string) {
-	rc.Run.Job().Result = result
+	storeJobResult(rc.Run.Job(), result)
 }
 
 func (rc *RunContext) steps() []*model.Step {

@@ -159,21 +159,8 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 		ctx, cancel := evaluateJobTimeout(ctx, rc)
 		defer cancel()
 
-		if rc.Run != nil && rc.Run.Workflow != nil {
-			wf := rc.Run.Workflow
-			if wf.RunName != "" {
-				eval := rc.NewExpressionEvaluator(ctx)
-				common.Logger(ctx).Infof("Run name: %s", eval.Interpolate(ctx, wf.RunName))
-			}
-			if summary := model.PermissionsSummary(wf.Permissions); summary != "" {
-				common.Logger(ctx).Infof("Workflow permissions (advisory): %s", summary)
-			}
-		}
 		if rc.Run != nil && rc.Run.Job() != nil {
 			job := rc.Run.Job()
-			if summary := model.PermissionsSummary(job.Permissions); summary != "" {
-				common.Logger(ctx).Infof("Job permissions (advisory): %s", summary)
-			}
 			conc := job.Concurrency
 			if conc == nil && rc.Run.Workflow != nil {
 				conc = rc.Run.Workflow.Concurrency
@@ -231,19 +218,22 @@ func printStepSummaries(ctx context.Context, rc *RunContext) {
 
 func setJobResult(ctx context.Context, info jobInfo, rc *RunContext, success bool) {
 	logger := common.Logger(ctx)
+	job := rc.Run.Job()
+	mu := jobResultMutex(job)
+	mu.Lock()
 
 	jobResult := "success"
 	// we have only one result for a whole matrix build, so we need
 	// to keep an existing result state if we run a matrix
-	if len(info.matrix()) > 0 && rc.Run.Job().Result != "" {
-		jobResult = rc.Run.Job().Result
+	if len(info.matrix()) > 0 && job != nil && job.Result != "" {
+		jobResult = job.Result
 	}
 
 	if !success {
 		jobResult = "failure"
-		if rc.Run != nil && rc.Run.Job() != nil {
+		if job != nil {
 			eval := rc.NewExpressionEvaluator(ctx)
-			coe := eval.Interpolate(ctx, rc.Run.Job().ContinueOnError)
+			coe := eval.Interpolate(ctx, job.ContinueOnError)
 			if strings.EqualFold(coe, "true") {
 				jobResult = "success"
 				logger.Infof("Job '%s' failed but continue-on-error is set; treating as success", rc.JobName)
@@ -251,9 +241,14 @@ func setJobResult(ctx context.Context, info jobInfo, rc *RunContext, success boo
 		}
 	}
 
+	// Failure wins across matrix cells.
+	if job != nil && job.Result == "failure" && jobResult == "success" && len(info.matrix()) > 0 {
+		jobResult = "failure"
+	}
+	mu.Unlock()
+
 	info.result(jobResult)
 	if rc.caller != nil {
-		// set reusable workflow job result
 		rc.caller.runContext.result(jobResult)
 	}
 

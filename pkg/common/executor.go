@@ -171,7 +171,7 @@ func NewFieldExecutor(name string, value interface{}, exec Executor) Executor {
 	}
 }
 
-// Then runs another executor if this executor succeeds
+// ThenError runs then only when the preceding executor returns a non-Warning error.
 func (e Executor) ThenError(then func(ctx context.Context, err error) error) Executor {
 	return func(ctx context.Context) error {
 		err := e(ctx)
@@ -186,7 +186,7 @@ func (e Executor) ThenError(then func(ctx context.Context, err error) error) Exe
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		return then(ctx, err)
+		return nil
 	}
 }
 

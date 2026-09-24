@@ -181,6 +181,21 @@ func (runner *runnerImpl) NewPlanExecutor(plan *model.Plan) common.Executor {
 				}
 				log.Debugf("Final matrix after applying user inclusions '%v'", matrixes)
 
+				// Workflow/job advisory metadata once per job (not per matrix cell).
+				metaRc := runner.newRunContext(ctx, run, nil)
+				if run.Workflow != nil {
+					if run.Workflow.RunName != "" {
+						eval := metaRc.NewExpressionEvaluator(ctx)
+						log.Infof("Run name: %s", eval.Interpolate(ctx, run.Workflow.RunName))
+					}
+					if summary := model.PermissionsSummary(run.Workflow.Permissions); summary != "" {
+						log.Infof("Workflow permissions (advisory): %s", summary)
+					}
+				}
+				if summary := model.PermissionsSummary(job.Permissions); summary != "" {
+					log.Infof("Job permissions (advisory): %s", summary)
+				}
+
 				maxParallel := 4
 				failFast := true
 				if job.Strategy != nil {
