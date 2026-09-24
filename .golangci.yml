@@ -62,7 +62,7 @@ linters:
       - builtin$
       - examples$
       # Vendored docker/cli opts + tests use gotest.tools; isolate from depguard.
-      - pkg/container/docker_cli(_test)?\.go$
+      - internal/container/docker_cli(_test)?\.go$
 
 issues:
   max-issues-per-linter: 0
@@ -78,4 +78,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
-      - pkg/container/docker_cli(_test)?\.go$
+      - internal/container/docker_cli(_test)?\.go$

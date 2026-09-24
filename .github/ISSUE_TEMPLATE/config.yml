@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Start a discussion
-    url: https://github.com/nektos/act/discussions/new
+    url: https://github.com/oimiragieo/gotcontext-actions/discussions/new
     about: You can ask for help here!
   - name: Want to contribute to act?
-    url: https://github.com/nektos/act/blob/master/CONTRIBUTING.md
+    url: https://github.com/oimiragieo/gotcontext-actions/blob/master/CONTRIBUTING.md
     about: Be sure to read contributing guidelines!

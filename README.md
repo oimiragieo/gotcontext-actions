@@ -35,7 +35,7 @@ Compatibility with GitHub Actions is intentionally incomplete; see [PARITY.md](P
 
 # Support
 
-Need help? Ask in [discussions](https://github.com/nektos/act/discussions)!
+Need help? Ask in [discussions](https://github.com/oimiragieo/gotcontext-actions/discussions)!
 
 # Contributing
 

@@ -52,9 +52,9 @@ jobs:
           paths: 'unit-tests.xml'
         if: always()
       - name: Run act from cli
-        run: go run main.go -P ubuntu-latest=node:22-bookworm-slim -C ./pkg/runner/testdata/ -W ./basic/push.yml
+        run: go run main.go -P ubuntu-latest=node:22-bookworm-slim -C ./internal/runner/testdata/ -W ./basic/push.yml
       - name: Run act from cli without docker support
-        run: go run -tags WITHOUT_DOCKER main.go -P ubuntu-latest=-self-hosted -C ./pkg/runner/testdata/ -W ./local-action-js/push.yml
+        run: go run -tags WITHOUT_DOCKER main.go -P ubuntu-latest=-self-hosted -C ./internal/runner/testdata/ -W ./local-action-js/push.yml
       - name: Upload Codecov report
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:

@@ -14,7 +14,7 @@ Usage: $this [-b bindir] [-d] [-f] [tag]
   -d turns on debug logging
   -f forces installation, bypassing version checks
    [tag] is a tag from
-   https://github.com/nektos/act/releases
+   https://github.com/oimiragieo/gotcontext-actions/releases
    If tag is missing, then the latest will be used.
 EOF
   exit 2

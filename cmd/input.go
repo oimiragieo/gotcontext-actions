@@ -49,6 +49,8 @@ type Input struct {
 	strictPlatforms                    bool
 	oidcMock                           bool
 	environmentSecrets                 []string
+	environmentVars                    []string
+	stepSummaryFile                    string
 	cacheServerPath                    string
 	cacheServerExternalURL             string
 	cacheServerAddr                    string

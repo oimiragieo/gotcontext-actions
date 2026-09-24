@@ -25,14 +25,14 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 
-	"github.com/nektos/act/pkg/artifactcache"
-	"github.com/nektos/act/pkg/artifacts"
-	"github.com/nektos/act/pkg/common"
-	"github.com/nektos/act/pkg/container"
-	"github.com/nektos/act/pkg/gh"
-	"github.com/nektos/act/pkg/model"
-	"github.com/nektos/act/pkg/oidc"
-	"github.com/nektos/act/pkg/runner"
+	"github.com/oimiragieo/gotcontext-actions/internal/artifactcache"
+	"github.com/oimiragieo/gotcontext-actions/internal/artifacts"
+	"github.com/oimiragieo/gotcontext-actions/internal/common"
+	"github.com/oimiragieo/gotcontext-actions/internal/container"
+	"github.com/oimiragieo/gotcontext-actions/internal/gh"
+	"github.com/oimiragieo/gotcontext-actions/internal/model"
+	"github.com/oimiragieo/gotcontext-actions/internal/oidc"
+	"github.com/oimiragieo/gotcontext-actions/internal/runner"
 )
 
 type Flag struct {
@@ -124,6 +124,8 @@ func createRootCommand(ctx context.Context, input *Input, version string) *cobra
 	rootCmd.PersistentFlags().BoolVarP(&input.strictPlatforms, "strict-platforms", "", false, "Fail when a job's runs-on platform has no mapped container image instead of skipping")
 	rootCmd.PersistentFlags().BoolVarP(&input.oidcMock, "oidc-mock", "", false, "Start a local mock OIDC token endpoint (ACTIONS_ID_TOKEN_REQUEST_URL)")
 	rootCmd.PersistentFlags().StringArrayVar(&input.environmentSecrets, "env-secret-file", []string{}, "Load secrets for a deployment environment (format: name=path/to/envfile)")
+	rootCmd.PersistentFlags().StringArrayVar(&input.environmentVars, "env-var-file", []string{}, "Load vars for a deployment environment (format: name=path/to/envfile)")
+	rootCmd.PersistentFlags().StringVar(&input.stepSummaryFile, "step-summary-file", "", "Write aggregated GITHUB_STEP_SUMMARY content to this host file after each job")
 	rootCmd.PersistentFlags().StringVarP(&input.cacheServerPath, "cache-server-path", "", filepath.Join(CacheHomeDir, "actcache"), "Defines the path where the cache server stores caches.")
 	rootCmd.PersistentFlags().StringVarP(&input.cacheServerExternalURL, "cache-server-external-url", "", "", "Defines the external URL for if the cache server is behind a proxy. e.g.: https://act-cache-server.example.com. Be careful that there is no trailing slash.")
 	rootCmd.PersistentFlags().StringVarP(&input.cacheServerAddr, "cache-server-addr", "", common.GetOutboundIP().String(), "Defines the address to which the cache server binds.")
@@ -653,6 +655,8 @@ func newRunCommand(ctx context.Context, input *Input) func(*cobra.Command, []str
 			StrictPlatforms:                    input.strictPlatforms,
 			OIDCMock:                           input.oidcMock,
 			EnvironmentSecrets:                 loadEnvironmentSecretFiles(input.environmentSecrets),
+			EnvironmentVars:                    loadEnvironmentVarFiles(input.environmentVars),
+			StepSummaryFile:                    input.stepSummaryFile,
 		}
 		if !input.noArtifactServer && config.ArtifactServerPath == "" {
 			config.ArtifactServerPath = filepath.Join(CacheHomeDir, "artifacts")
@@ -753,7 +757,7 @@ func defaultImageSurvey(actrc string) error {
 	var answer string
 	confirmation := &survey.Select{
 		Message: "Please choose the default image you want to use with act:\n  - Large size image: ca. 17GB download + 53.1GB storage, you will need 75GB of free disk space, snapshots of GitHub Hosted Runners without snap and pulled docker images\n  - Medium size image: ~500MB, includes only necessary tools to bootstrap actions and aims to be compatible with most actions\n  - Micro size image: <200MB, contains only NodeJS required to bootstrap actions, doesn't work with all actions\n\nDefault image and other options can be changed manually in " + configLocations()[0] + " (please refer to https://nektosact.com/usage/index.html?highlight=configur#configuration-file for additional information about file structure)",
-		Help:    "If you want to know why act asks you that, please go to https://github.com/nektos/act/issues/107",
+		Help:    "If you want to know why act asks you that, please go to https://github.com/oimiragieo/gotcontext-actions/issues/107",
 		Default: "Medium",
 		Options: []string{"Large", "Medium", "Micro"},
 	}

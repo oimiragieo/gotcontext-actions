@@ -15,7 +15,7 @@
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/nektos/act</projectSourceUrl>
     <docsUrl>https://raw.githubusercontent.com/nektos/act/master/README.md</docsUrl>
-    <bugTrackerUrl>https://github.com/nektos/act/issues</bugTrackerUrl>
+    <bugTrackerUrl>https://github.com/oimiragieo/gotcontext-actions/issues</bugTrackerUrl>
     <tags>act github-actions actions golang ci devops</tags>
     <summary>Run your GitHub Actions locally 🚀</summary>
     <description>Run your GitHub Actions locally 🚀</description>

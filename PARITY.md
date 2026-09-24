@@ -1,4 +1,4 @@
-# GitHub Actions parity notes for act
+# GitHub Actions parity notes for gotcontext-actions
 
 Act aims for local fidelity with GitHub Actions, but **is not 100% compatible**.
 
@@ -21,6 +21,9 @@ Official upstream gap list (also see https://nektosact.com/not_supported.html):
 | `--strict-platforms` | Fail instead of skipping unmapped `runs-on` |
 | `--oidc-mock` | Local JWT endpoint for `ACTIONS_ID_TOKEN_REQUEST_URL` |
 | `--env-secret-file name=path` | Optional deployment-environment secrets |
+| `--env-var-file name=path` | Optional deployment-environment vars |
+| `--step-summary-file path` | Write aggregated step summaries to a host file |
+| Concurrency scalar YAML | `concurrency: group-name` and `queue` field parsed |
 
 ## Cannot fully clone (GitHub cloud-only)
 
