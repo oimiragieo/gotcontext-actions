@@ -170,7 +170,7 @@ func newJobExecutor(info jobInfo, sf stepFactory, rc *RunContext) common.Executo
 				if cc := common.GetConcurrencyController(ctx); cc != nil {
 					eval := rc.NewExpressionEvaluator(ctx)
 					var release context.CancelFunc
-					ctx, release = cc.Acquire(ctx, eval.Interpolate(ctx, conc.Group), conc.CancelInProgress)
+					ctx, release = cc.Acquire(ctx, eval.Interpolate(ctx, conc.Group), conc.CancelInProgress, conc.Queue)
 					defer release()
 				}
 			}
