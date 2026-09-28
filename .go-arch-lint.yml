@@ -3,8 +3,10 @@
 version: 2
 workdir: .
 components:
-  cmd:
-    in: cmd/**
+  cli:
+    in: internal/cli/**
+  expr:
+    in: internal/expr/**
   runner:
     in: internal/runner/**
   container:
@@ -20,9 +22,10 @@ components:
   common:
     in: internal/common/**
 deps:
-  cmd:
+  cli:
     mayDependOn:
       - runner
+      - expr
       - container
       - artifacts
       - artifactcache
@@ -31,6 +34,7 @@ deps:
       - common
   runner:
     mayDependOn:
+      - expr
       - container
       - artifacts
       - artifactcache

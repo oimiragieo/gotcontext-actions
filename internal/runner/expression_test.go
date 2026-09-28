@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/oimiragieo/gotcontext-actions/internal/exprparser"
+	exprparser "github.com/oimiragieo/gotcontext-actions/internal/expr"
 	"github.com/oimiragieo/gotcontext-actions/internal/model"
 	assert "github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v3"

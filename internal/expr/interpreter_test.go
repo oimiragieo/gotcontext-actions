@@ -1,4 +1,4 @@
-package exprparser
+package expr
 
 import (
 	"math"

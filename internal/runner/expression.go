@@ -14,7 +14,7 @@ import (
 
 	"github.com/oimiragieo/gotcontext-actions/internal/common"
 	"github.com/oimiragieo/gotcontext-actions/internal/container"
-	"github.com/oimiragieo/gotcontext-actions/internal/exprparser"
+	exprparser "github.com/oimiragieo/gotcontext-actions/internal/expr"
 	"github.com/oimiragieo/gotcontext-actions/internal/model"
 	"gopkg.in/yaml.v3"
 )

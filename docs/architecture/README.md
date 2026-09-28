@@ -5,11 +5,14 @@ gotcontext-actions is a modular monolith derived from [nektos/act](https://githu
 ## Dependency direction
 
 ```
-cmd (CLI) → internal/runner → adapters (container, artifacts, oidc)
-                           → domain (model, exprparser, common)
+cmd mains → internal/cli → internal/runner → adapters (container, artifacts, oidc)
+internal/expr is the expression language used by runner
+adapters and runner use domain packages (model, common)
 ```
 
-- `cmd` is the thin Cobra surface and wiring.
+- `cmd/gotcontext-actions` and `cmd/act` are thin mains. Cobra lives in `internal/cli`.
+- `internal/expr` evaluates `${{ }}` expressions.
+- Vendored `node_modules` under `internal/runner/testdata/actions` are fixture payloads for action tests, not product dependencies. Dependabot alerts on those files are not the runtime module set in `go.mod`.
 - `internal/*` is not importable by external modules.
 - Adapters never import `runner`.
 

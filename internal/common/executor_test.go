@@ -83,34 +83,44 @@ func TestNewParallelExecutor(t *testing.T) {
 	count := 0
 	activeCount := 0
 	maxCount := 0
+	var mu sync.Mutex
 	emptyWorkflow := NewPipelineExecutor(func(_ context.Context) error {
+		mu.Lock()
 		count++
-
 		activeCount++
 		if activeCount > maxCount {
 			maxCount = activeCount
 		}
+		mu.Unlock()
 		time.Sleep(2 * time.Second)
+		mu.Lock()
 		activeCount--
+		mu.Unlock()
 
 		return nil
 	})
 
 	err := NewParallelExecutor(2, emptyWorkflow, emptyWorkflow, emptyWorkflow)(ctx)
 
+	mu.Lock()
 	assert.Equal(3, count, "should run all 3 executors")
 	assert.Equal(2, maxCount, "should run at most 2 executors in parallel")
+	mu.Unlock()
 	assert.Nil(err)
 
 	// Reset to test running the executor with 0 parallelism
+	mu.Lock()
 	count = 0
 	activeCount = 0
 	maxCount = 0
+	mu.Unlock()
 
 	errSingle := NewParallelExecutor(0, emptyWorkflow, emptyWorkflow, emptyWorkflow)(ctx)
 
+	mu.Lock()
 	assert.Equal(3, count, "should run all 3 executors")
 	assert.Equal(1, maxCount, "should run at most 1 executors in parallel")
+	mu.Unlock()
 	assert.Nil(errSingle)
 }
 
@@ -139,16 +149,23 @@ func TestNewParallelExecutorCanceled(t *testing.T) {
 	errExpected := fmt.Errorf("fake error")
 
 	count := 0
+	var mu sync.Mutex
 	successWorkflow := NewPipelineExecutor(func(_ context.Context) error {
+		mu.Lock()
 		count++
+		mu.Unlock()
 		return nil
 	})
 	errorWorkflow := NewPipelineExecutor(func(_ context.Context) error {
+		mu.Lock()
 		count++
+		mu.Unlock()
 		return errExpected
 	})
 	err := NewParallelExecutor(3, errorWorkflow, successWorkflow, successWorkflow)(ctx)
+	mu.Lock()
 	assert.Equal(3, count)
+	mu.Unlock()
 	assert.Error(errExpected, err)
 }
 

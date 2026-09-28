@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/oimiragieo/gotcontext-actions/internal/exprparser"
+	exprparser "github.com/oimiragieo/gotcontext-actions/internal/expr"
 	"github.com/oimiragieo/gotcontext-actions/internal/model"
 
 	log "github.com/sirupsen/logrus"

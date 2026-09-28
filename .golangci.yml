@@ -35,6 +35,8 @@ linters:
           deny:
             - pkg: github.com/oimiragieo/gotcontext-actions/internal/runner
               desc: container must not import runner (dependency direction)
+            - pkg: github.com/oimiragieo/gotcontext-actions/internal/cli
+              desc: container must not import cli (dependency direction)
         no-artifacts-to-runner:
           files:
             - "**/internal/artifacts/**"
@@ -43,6 +45,8 @@ linters:
           deny:
             - pkg: github.com/oimiragieo/gotcontext-actions/internal/runner
               desc: adapters must not import runner (dependency direction)
+            - pkg: github.com/oimiragieo/gotcontext-actions/internal/cli
+              desc: adapters must not import cli (dependency direction)
     gocritic:
       disabled-checks:
         - ifElseChain

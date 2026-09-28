@@ -1,4 +1,4 @@
-package exprparser
+package expr
 
 import (
 	"crypto/sha256"
@@ -183,15 +183,13 @@ func (impl *interperterImpl) fromJSON(value reflect.Value) (interface{}, error) 
 func (impl *interperterImpl) hashFiles(paths ...reflect.Value) (string, error) {
 	var ps []gitignore.Pattern
 
-	const cwdPrefix = "." + string(filepath.Separator)
-	const excludeCwdPrefix = "!" + cwdPrefix
 	for _, path := range paths {
 		if path.Kind() == reflect.String {
-			cleanPath := path.String()
-			if strings.HasPrefix(cleanPath, cwdPrefix) {
-				cleanPath = cleanPath[len(cwdPrefix):]
-			} else if strings.HasPrefix(cleanPath, excludeCwdPrefix) {
-				cleanPath = "!" + cleanPath[len(excludeCwdPrefix):]
+			cleanPath := filepath.ToSlash(path.String())
+			if strings.HasPrefix(cleanPath, "./") {
+				cleanPath = cleanPath[2:]
+			} else if strings.HasPrefix(cleanPath, "!./") {
+				cleanPath = "!" + cleanPath[len("!./"):]
 			}
 			ps = append(ps, gitignore.ParsePattern(cleanPath, nil))
 		} else {
@@ -206,8 +204,8 @@ func (impl *interperterImpl) hashFiles(paths ...reflect.Value) (string, error) {
 		if err != nil {
 			return err
 		}
-		sansPrefix := strings.TrimPrefix(path, impl.config.WorkingDir+string(filepath.Separator))
-		parts := strings.Split(sansPrefix, string(filepath.Separator))
+		sansPrefix := strings.TrimPrefix(filepath.ToSlash(path), filepath.ToSlash(impl.config.WorkingDir)+"/")
+		parts := strings.Split(sansPrefix, "/")
 		if fi.IsDir() || !matcher.Match(parts, fi.IsDir()) {
 			return nil
 		}

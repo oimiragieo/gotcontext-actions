@@ -3,7 +3,7 @@ package main
 import (
 	_ "embed"
 
-	"github.com/oimiragieo/gotcontext-actions/cmd"
+	"github.com/oimiragieo/gotcontext-actions/internal/cli"
 	"github.com/oimiragieo/gotcontext-actions/internal/common"
 )
 
@@ -13,5 +13,5 @@ var version string
 func main() {
 	ctx, cancel := common.CreateGracefulJobCancellationContext()
 	defer cancel()
-	cmd.Execute(ctx, version)
+	cli.Execute(ctx, version)
 }
