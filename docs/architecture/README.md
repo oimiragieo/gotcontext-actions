@@ -26,4 +26,4 @@ adapters and runner use domain packages (model, common)
 
 ## Fitness
 
-Import bans are enforced via `.golangci.yml` depguard (see ADR-0001).
+Import bans are enforced via `.golangci.yml` depguard (see ADR-0001). That is the only architecture fitness gate in CI. A standalone `.go-arch-lint.yml` was removed because it was incomplete relative to the real package graph and was never a merge requirement.

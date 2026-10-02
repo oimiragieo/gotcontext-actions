@@ -8,7 +8,7 @@ Compatibility with GitHub Actions is intentionally incomplete; see [PARITY.md](P
 
 ## What a new session should trust
 
-`main` is `00f7451` plus the commits below. Local short tests and one race run passed. GitHub Actions on those commits was not watched, and `go-arch-lint` was never executed. Full `go test ./...` (Docker plus live clones) is not the merge gate; it has timed out before.
+Tip of this branch lands `golang.org/x/crypto v0.52.0` and `golang.org/x/net v0.55.0` from current `main` (not by rebasing stale Dependabot #3/#4). Local merge gate: `go test -race -count=1 -timeout 120s ./internal/common/ ./internal/model/` passed. Full `go test ./...` (Docker plus live clones) is not the merge gate.
 
 | Result | Evidence |
 | --- | --- |
@@ -16,14 +16,17 @@ Compatibility with GitHub Actions is intentionally incomplete; see [PARITY.md](P
 | Worked | `3f5bcb2` `queue: single` waits; `queue: max` overlaps; `cancel-in-progress` still cancels. `go test -run Concurrency ./internal/common` |
 | Worked, after a seen failure | `00f7451` moves Cobra to `internal/cli` and expressions to `internal/expr`. `hashFiles` returned empty hashes on Windows until patterns were slash-normalized. `go test -race ./internal/common/ ./internal/model/` failed on unsynchronized counters in `TestNewParallelExecutor`, then passed after the test mutex. |
 | Worked | Hermetic step summary at `d297ae6`. OIDC mock, `--strict-platforms`, `--env-secret-file`, `--env-var-file`, `--step-summary-file`. |
-| Do not treat as proven | Remote CI green. `go-arch-lint`. `go test ./...`. Dependabot PRs #1–#7 are open and unmerged. |
-| Do not "fix" as product bugs | Empty tensor-grep blast-radius means gopls was missing, not that a symbol has zero callers. Vendored `internal/runner/testdata/actions/**/node_modules` is fixture payload, not the Go module. |
+| Worked | Branch `deps/x-crypto-0.52-x-net-0.55`: `go get` crypto `v0.52.0` then net `v0.55.0` + `go mod tidy`. Race short tests passed. Stale Dependabot #3/#4 were 6 commits behind `main` (pre-`internal/` layout); closed after this tip landing. |
+| Worked | Deleted `.go-arch-lint.yml`. Architecture fitness remains golangci **depguard** only (adapters must not import `runner`/`cli`). |
+| Do not treat as proven | Remote CI green on tip. Full `go test ./...`. Dependabot #1 (20-module), #2 (go-git), #5–#7 still open. |
+| Do not treat as cleared | `govulncheck ./...` after crypto `v0.52.0` still reports GO-2026-6354/6355 fixed in `golang.org/x/crypto@v0.56.0` (module requires Go 1.26). Remaining findings in `go-git` (#2) and `moby/go-archive` (#6) are out of this bump. |
+| Do not "fix" as product bugs | Empty tensor-grep blast-radius means gopls was missing, not that a symbol has zero callers. Vendored `internal/runner/testdata/actions/**/node_modules` is fixture payload, not the Go module. Remote lint/test-linux/snapshot failures on old Dependabot PRs were pre-existing (gocyclo, Docker fixtures, Windows GoReleaser/Chocolatey), not caused by crypto/net bumps. |
 
 Binaries: `cmd/gotcontext-actions` and `cmd/act` call `internal/cli`. Package `internal/model` was left in place on purpose.
 
 ## What to do next
 
-Review Dependabot PRs one at a time, starting with `golang.org/x/crypto` and `golang.org/x/net` ([#3](https://github.com/oimiragieo/gotcontext-actions/pull/3), [#4](https://github.com/oimiragieo/gotcontext-actions/pull/4)). Do not merge the 20-module bump and the `go-git` bump in the same step. After that, run `go-arch-lint` once and either wire it into CI or delete the config. Host-mode speed, service health checks, and watch/pre-push are the product gaps versus Rehearse; they are not started.
+Review Dependabot [#2](https://github.com/oimiragieo/gotcontext-actions/pull/2) (`go-git` → 5.19.2) alone, then [#6](https://github.com/oimiragieo/gotcontext-actions/pull/6) / [#7](https://github.com/oimiragieo/gotcontext-actions/pull/7). Do not merge the 20-module bump ([#1](https://github.com/oimiragieo/gotcontext-actions/pull/1)) in the same step. Optionally bump `golang.org/x/crypto` to `v0.56.0` after raising the module Go line to 1.26. CI debt (Docker fixture perms, snapshot Windows artifacts) is separate. Host-mode speed, service health checks, and watch/pre-push versus Rehearse are not started.
 
 ## Overview
 
