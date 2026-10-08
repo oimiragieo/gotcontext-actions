@@ -30,7 +30,7 @@ Binaries: `cmd/gotcontext-actions` and `cmd/act` call `internal/cli`. Package `i
 
 ## What to do next
 
-Review Dependabot [#7](https://github.com/oimiragieo/gotcontext-actions/pull/7) (otel/sdk) alone if needed; do not merge the 20-module bump ([#1](https://github.com/oimiragieo/gotcontext-actions/pull/1)) or Actions mega [#5](https://github.com/oimiragieo/gotcontext-actions/pull/5) with security bumps. Snapshot/Chocolatey and remaining lint debt are separate. Host-mode speed, service health checks, and watch/pre-push versus Rehearse are not started.
+Review Dependabot [#7](https://github.com/oimiragieo/gotcontext-actions/pull/7) (otel/sdk) alone if needed; do not merge gomod group [#14](https://github.com/oimiragieo/gotcontext-actions/pull/14) or Actions mega [#5](https://github.com/oimiragieo/gotcontext-actions/pull/5) with single security bumps. Snapshot/Chocolatey and remaining lint debt are separate. Host-mode speed, service health checks, and watch/pre-push versus Rehearse are not started.
 
 ## Overview
 
