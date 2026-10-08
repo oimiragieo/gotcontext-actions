@@ -8,7 +8,7 @@ Compatibility with GitHub Actions is intentionally incomplete; see [PARITY.md](P
 
 ## What a new session should trust
 
-Tip of this branch lands `golang.org/x/crypto v0.52.0` and `golang.org/x/net v0.55.0` from current `main` (not by rebasing stale Dependabot #3/#4). Local merge gate: `go test -race -count=1 -timeout 120s ./internal/common/ ./internal/model/` passed. Full `go test ./...` (Docker plus live clones) is not the merge gate.
+Local merge gate: `go test -race -count=1 -timeout 120s ./internal/common/ ./internal/model/` (with `CGO_ENABLED=1` for race). Full `go test ./...` (Docker plus live clones) is not the merge gate.
 
 | Result | Evidence |
 | --- | --- |
@@ -21,15 +21,16 @@ Tip of this branch lands `golang.org/x/crypto v0.52.0` and `golang.org/x/net v0.
 | Worked | Race CI: workflow keeps global `CGO_ENABLED=0`, but the “Race unit tests” step sets `CGO_ENABLED=1` so `-race` works on Linux (`3cb9ce2` / #10). |
 | Worked | `go-git/v5` → `v5.19.2` (path traversal / symlink advisories). Race on `./internal/common/` + `./internal/model/` passed. Live `TestGitCloneExecutor` can timeout on network clones — not the merge gate. |
 | Worked | `golang.org/x/crypto` → `v0.57.0`; module `go` → `1.26.8`. Race short tests passed. `govulncheck` crypto SSH findings cleared. |
-| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #1, #5–#7 still open until landed. |
-| Do not treat as cleared | `govulncheck` still reports `moby/go-archive` (fixed `v0.3.0`, Dependabot #6). |
+| Worked, after a seen failure | `moby/go-archive` → `v0.3.0`. `archive.Uncompressed` removed upstream — use `compression.None` in `docker_build.go`. `govulncheck ./...` reports 0 affecting vulns. |
+| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #1, #5, #7 still open. |
+| Do not "fix" as product bugs | `TestGetSocketAndHostNoHostNoSocketDefaultLocation` can fail on Windows path slash style (`C:\\` vs `C:/`); unrelated to go-archive. |
 | Do not "fix" as product bugs | Empty tensor-grep blast-radius means gopls was missing, not that a symbol has zero callers. Vendored `internal/runner/testdata/actions/**/node_modules` is fixture payload, not the Go module. Remote lint/snapshot failures on Dependabot PRs were pre-existing (gocyclo, Windows GoReleaser/Chocolatey), not caused by crypto/net bumps. |
 
 Binaries: `cmd/gotcontext-actions` and `cmd/act` call `internal/cli`. Package `internal/model` was left in place on purpose.
 
 ## What to do next
 
-Land [#9](https://github.com/oimiragieo/gotcontext-actions/pull/9) (`x/crypto` → 0.57 with Go 1.26), then [#6](https://github.com/oimiragieo/gotcontext-actions/pull/6) (`moby/go-archive` → 0.3.0)—one PR at a time. Do not merge the 20-module bump ([#1](https://github.com/oimiragieo/gotcontext-actions/pull/1)) with those. Snapshot/Chocolatey and remaining lint debt are separate. Host-mode speed, service health checks, and watch/pre-push versus Rehearse are not started.
+Review Dependabot [#7](https://github.com/oimiragieo/gotcontext-actions/pull/7) (otel/sdk) alone if needed; do not merge the 20-module bump ([#1](https://github.com/oimiragieo/gotcontext-actions/pull/1)) or Actions mega [#5](https://github.com/oimiragieo/gotcontext-actions/pull/5) with security bumps. Snapshot/Chocolatey and remaining lint debt are separate. Host-mode speed, service health checks, and watch/pre-push versus Rehearse are not started.
 
 ## Overview
 
