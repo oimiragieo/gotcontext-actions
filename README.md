@@ -22,7 +22,7 @@ Local merge gate: `go test -race -count=1 -timeout 120s ./internal/common/ ./int
 | Worked | `go-git/v5` → `v5.19.2` (path traversal / symlink advisories). Race on `./internal/common/` + `./internal/model/` passed. Live `TestGitCloneExecutor` can timeout on network clones — not the merge gate. |
 | Worked | `golang.org/x/crypto` → `v0.57.0`; module `go` → `1.26.8`. Race short tests passed. `govulncheck` crypto SSH findings cleared. |
 | Worked, after a seen failure | `moby/go-archive` → `v0.3.0`. `archive.Uncompressed` removed upstream — use `compression.None` in `docker_build.go`. `govulncheck ./...` reports 0 affecting vulns. |
-| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #1, #5, #7 still open. |
+| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #14 (gomod group), #5 (Actions group), #7 (otel) still open. |
 | Do not "fix" as product bugs | `TestGetSocketAndHostNoHostNoSocketDefaultLocation` can fail on Windows path slash style (`C:\\` vs `C:/`); unrelated to go-archive. |
 | Do not "fix" as product bugs | Empty tensor-grep blast-radius means gopls was missing, not that a symbol has zero callers. Vendored `internal/runner/testdata/actions/**/node_modules` is fixture payload, not the Go module. Remote lint/snapshot failures on Dependabot PRs were pre-existing (gocyclo, Windows GoReleaser/Chocolatey), not caused by crypto/net bumps. |
 
