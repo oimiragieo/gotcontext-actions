@@ -20,8 +20,9 @@ Tip of this branch lands `golang.org/x/crypto v0.52.0` and `golang.org/x/net v0.
 | Worked | Deleted `.go-arch-lint.yml`. Architecture fitness remains golangci **depguard** only (adapters must not import `runner`/`cli`). |
 | Worked | Race CI: workflow keeps global `CGO_ENABLED=0`, but the “Race unit tests” step sets `CGO_ENABLED=1` so `-race` works on Linux (`3cb9ce2` / #10). |
 | Worked | `go-git/v5` → `v5.19.2` (path traversal / symlink advisories). Race on `./internal/common/` + `./internal/model/` passed. Live `TestGitCloneExecutor` can timeout on network clones — not the merge gate. |
-| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #1, #5–#7, #9 still open until landed. |
-| Do not treat as cleared | `govulncheck` still reports crypto SSH DoS (fixed ≥ `v0.56.0` / Go 1.26) and `moby/go-archive` (fixed `v0.3.0`). |
+| Worked | `golang.org/x/crypto` → `v0.57.0`; module `go` → `1.26.8`. Race short tests passed. `govulncheck` crypto SSH findings cleared. |
+| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #1, #5–#7 still open until landed. |
+| Do not treat as cleared | `govulncheck` still reports `moby/go-archive` (fixed `v0.3.0`, Dependabot #6). |
 | Do not "fix" as product bugs | Empty tensor-grep blast-radius means gopls was missing, not that a symbol has zero callers. Vendored `internal/runner/testdata/actions/**/node_modules` is fixture payload, not the Go module. Remote lint/snapshot failures on Dependabot PRs were pre-existing (gocyclo, Windows GoReleaser/Chocolatey), not caused by crypto/net bumps. |
 
 Binaries: `cmd/gotcontext-actions` and `cmd/act` call `internal/cli`. Package `internal/model` was left in place on purpose.
