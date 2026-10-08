@@ -45,6 +45,8 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Race unit tests
+        env:
+          CGO_ENABLED: 1
         run: go test -race -count=1 -timeout 120s ./internal/common/ ./internal/model/
       - name: Run Tests
         run: go run gotest.tools/gotestsum@latest --junitfile unit-tests.xml --format pkgname -- -v -cover -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic -timeout 20m ./...
