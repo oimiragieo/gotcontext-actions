@@ -4,17 +4,25 @@
   "updated_at": "2026-10-09T22:08:00Z",
   "closeout": "2026-10-09",
   "branch": "main",
-  "final_sha_at_closeout_write": "284a2dbe4fc74ec92a534ab5adac4e7e98985dfb",
+  "final_sha_at_closeout_write": "4865fce931afda34e8a5a71f8a1341ab44b8362b",
   "ahead_of_origin": 0,
   "worktrees": [],
-  "open_prs": [5, 7, 18],
+  "open_prs": [
+    5,
+    7,
+    18
+  ],
   "merge_gate": {
     "command": "CGO_ENABLED=1 go test -race -count=1 -timeout 120s ./internal/common/ ./internal/model/",
     "last_local_result": "pass",
     "govulncheck": "FAIL — 10 stdlib findings; needs go1.26.9 + x/net v0.60.0 (backlog B1/B2)"
   },
   "security_arm": {
-    "modules_cleared": ["go-git@v5.19.2", "x/crypto@v0.57.0", "moby/go-archive@v0.3.0"],
+    "modules_cleared": [
+      "go-git@v5.19.2",
+      "x/crypto@v0.57.0",
+      "moby/go-archive@v0.3.0"
+    ],
     "open_arm": "stdlib go1.26.9 + golang.org/x/net@v0.60.0"
   },
   "skills_router": "C:/Users/oimir/.cursor/skills/skill-library-map/SKILL.md",
