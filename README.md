@@ -21,8 +21,9 @@ Local merge gate: `go test -race -count=1 -timeout 120s ./internal/common/ ./int
 | Worked | Race CI: workflow keeps global `CGO_ENABLED=0`, but the “Race unit tests” step sets `CGO_ENABLED=1` so `-race` works on Linux (`3cb9ce2` / #10). |
 | Worked | `go-git/v5` → `v5.19.2` (path traversal / symlink advisories). Race on `./internal/common/` + `./internal/model/` passed. Live `TestGitCloneExecutor` can timeout on network clones — not the merge gate. |
 | Worked | `golang.org/x/crypto` → `v0.57.0`; module `go` → `1.26.8`. Race short tests passed. `govulncheck` crypto SSH findings cleared. |
-| Worked, after a seen failure | `moby/go-archive` → `v0.3.0`. `archive.Uncompressed` removed upstream — use `compression.None` in `docker_build.go`. `govulncheck ./...` reports 0 affecting vulns. |
-| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #14 (gomod group), #5 (Actions group), #7 (otel) still open. |
+| Worked, after a seen failure | `moby/go-archive` → `v0.3.0`. `archive.Uncompressed` removed upstream — use `compression.None` in `docker_build.go`. Module CVEs cleared at land time. |
+| Do not treat as proven | Remote CI fully green (lint/snapshot debt may remain). Full `go test ./...`. Dependabot #18 (gomod group), #5 (Actions), #7 (otel) still open. |
+| Do not treat as cleared | Closeout `govulncheck` on Go `1.26.8`: **10 stdlib findings** (fixed in `go1.26.9`) + `x/net` → `v0.60.0`. See backlog B1/B2. |
 | Do not "fix" as product bugs | `TestGetSocketAndHostNoHostNoSocketDefaultLocation` can fail on Windows path slash style (`C:\\` vs `C:/`); unrelated to go-archive. |
 | Do not "fix" as product bugs | Empty tensor-grep blast-radius means gopls was missing, not that a symbol has zero callers. Vendored `internal/runner/testdata/actions/**/node_modules` is fixture payload, not the Go module. Remote lint/snapshot failures on Dependabot PRs were pre-existing (gocyclo, Windows GoReleaser/Chocolatey), not caused by crypto/net bumps. |
 
@@ -30,7 +31,7 @@ Binaries: `cmd/gotcontext-actions` and `cmd/act` call `internal/cli`. Package `i
 
 ## What to do next
 
-Review Dependabot [#7](https://github.com/oimiragieo/gotcontext-actions/pull/7) (otel/sdk) alone if needed; do not merge gomod group [#14](https://github.com/oimiragieo/gotcontext-actions/pull/14) or Actions mega [#5](https://github.com/oimiragieo/gotcontext-actions/pull/5) with single security bumps. Snapshot/Chocolatey and remaining lint debt are separate. Host-mode speed, service health checks, and watch/pre-push versus Rehearse are not started.
+See [backlog.md](backlog.md) and [HANDOFF.md](HANDOFF.md). P0 next: Go **1.26.9** + `golang.org/x/net` **v0.60.0** (`govulncheck` still red on stdlib at `go 1.26.8`). Then Dependabot [#7](https://github.com/oimiragieo/gotcontext-actions/pull/7) alone if needed; do not merge gomod mega [#18](https://github.com/oimiragieo/gotcontext-actions/pull/18) or Actions mega [#5](https://github.com/oimiragieo/gotcontext-actions/pull/5) with single security bumps. Snapshot/Chocolatey and lint debt are separate. Rehearse product gaps are not started.
 
 ## Overview
 
